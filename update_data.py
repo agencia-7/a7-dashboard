@@ -50,7 +50,8 @@ def calc_roas(preset):
                f'&date_preset={preset}&access_token={TOKEN}&limit=500')
         d = req(url)
         for row in (d.get('data') or []):
-            if any(k in (row.get('campaign_name') or '') for k in KEYWORDS):
+            name = (row.get('campaign_name') or '').upper()
+            if any(k.upper() in name for k in KEYWORDS):
                 ts += float(row.get('spend', 0))
                 tr += action_val(row.get('action_values'), 'omni_purchase')
     return '—' if ts == 0 else fmt_br(tr / ts, 2)
