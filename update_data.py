@@ -2,7 +2,7 @@ import urllib.request, json, re, os
 
 TOKEN    = os.environ['META_TOKEN']
 ACCOUNTS = ['619334585395511', '1000257484054841']
-KEYWORDS = ['Julian', 'Quintal', 'Piccolin', 'Ofir', 'Trilha']
+KEYWORDS = ['Julian', 'Quintal', 'Piccolin', 'Ofir', 'Trilha', 'Watermann', 'Rei do']
 GV       = 'v21.0'
 
 def fmt_br(num, dec=0):
