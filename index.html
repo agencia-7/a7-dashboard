@@ -304,10 +304,61 @@
     letter-spacing: 0.02em;
   }
 
+  .roas-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2px, 0.5vh, 8px);
+    width: 100%;
+  }
+
+  .roas-extremes {
+    display: flex;
+    gap: clamp(16px, 3vw, 44px);
+    align-items: flex-end;
+  }
+
+  .roas-extreme-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .roas-extreme-lbl {
+    font-size: clamp(9px, 1.2vh, 13px);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.55;
+    line-height: 1.6;
+  }
+
+  .roas-extreme-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: clamp(18px, 2.8vh, 40px);
+    color: var(--gold);
+    line-height: 1;
+    opacity: 0.80;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .roas-avg-lbl {
+    font-size: clamp(9px, 1.1vh, 13px);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.45;
+    margin-top: -2px;
+  }
+
   .roas-main {
     font-family: 'Barlow Condensed', sans-serif;
     font-weight: 900;
-    font-size: clamp(60px, 12vh, 160px);
+    font-size: clamp(44px, 8vh, 110px);
     line-height: 1;
     color: var(--gold);
     letter-spacing: -0.02em;
@@ -506,15 +557,28 @@
       </div>
 
       <div class="kpi-card roas">
-        <div class="kpi-label"><span class="kpi-dot"></span>ROAS</div>
+        <div class="kpi-label"><span class="kpi-dot"></span>ROAS · clientes</div>
         <div class="kpi-value-wrap">
-          <div class="roas-val-wrap">
-            <div class="roas-main" id="roas-main" title="Clique para editar"></div>
-            <div class="roas-x">x</div>
+          <div class="roas-stats">
+            <div class="roas-extremes">
+              <div class="roas-extreme-item">
+                <span class="roas-extreme-lbl">máx</span>
+                <span class="roas-extreme-val"><span id="roas-max">—</span>x</span>
+              </div>
+              <div class="roas-extreme-item">
+                <span class="roas-extreme-lbl">mín</span>
+                <span class="roas-extreme-val"><span id="roas-min">—</span>x</span>
+              </div>
+            </div>
+            <div class="roas-val-wrap">
+              <div class="roas-main" id="roas-avg" title="Clique para editar média"></div>
+              <div class="roas-x">x</div>
+            </div>
+            <div class="roas-avg-lbl">média</div>
           </div>
         </div>
         <div class="kpi-footer">
-          <div class="kpi-desc">Retorno sobre investimento</div>
+          <div class="kpi-desc">7 clientes · máx · média · mín</div>
         </div>
       </div>
 
@@ -591,13 +655,13 @@
 
 <script>
 const DEFAULTS = {
-  hoje: { spend: '3,80', revenue: '0', sales: '0', reach: '1.424', impressions: '1.531', clicks: '35', roas: '—' },
-  '7d': { spend: '1.858,96', revenue: '17.940,47', sales: '237', reach: '114.371', impressions: '397.026', clicks: '1.714', roas: '12,63' },
-  '30d':{ spend: '7.378,29', revenue: '58.652,43', sales: '752', reach: '201.787', impressions: '1.294.949', clicks: '6.733', roas: '9,78' },
+  hoje: { spend: '4,29', revenue: '0', sales: '0', reach: '1.580', impressions: '1.696', clicks: '37', roas_max: '—', roas_min: '—', roas_avg: '—' },
+  '7d': { spend: '1.859,06', revenue: '17.940,47', sales: '237', reach: '114.371', impressions: '397.051', clicks: '1.714', roas_max: '—', roas_min: '—', roas_avg: '—' },
+  '30d':{ spend: '7.378,39', revenue: '58.652,43', sales: '752', reach: '201.787', impressions: '1.294.974', clicks: '6.733', roas_max: '—', roas_min: '—', roas_avg: '—' },
 };
 
 const ACCOUNTS = ['Jonathas Ferraz','Agencia 7','Agencia 7 CT 02','Max Digital','DahFer','Café & Bistrô Setubal 01','Odontocompany Cacoal'];
-const STORAGE_KEY = 'a7_dashboard_v7';
+const STORAGE_KEY = 'a7_dashboard_v8';
 
 function loadState() {
   try {
@@ -638,7 +702,9 @@ function renderPeriod() {
   document.querySelectorAll('.kpi-value[data-metric]').forEach(el => {
     el.textContent = data[el.dataset.metric] || '—';
   });
-  document.getElementById('roas-main').textContent = data.roas || '—';
+  document.getElementById('roas-avg').textContent = data.roas_avg || '—';
+  document.getElementById('roas-max').textContent = data.roas_max || '—';
+  document.getElementById('roas-min').textContent = data.roas_min || '—';
   const now = new Date();
   document.getElementById('update-time').textContent =
     `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -703,8 +769,8 @@ function startEdit(el, metric) {
 // EDITING — ROAS
 function startEditRoas() {
   const data = state[currentPeriod];
-  const roasEl = document.getElementById('roas-main');
-  const current = data.roas || '';
+  const roasEl = document.getElementById('roas-avg');
+  const current = data.roas_avg || '';
 
   const input = document.createElement('input');
   input.className = 'roas-edit-input';
@@ -714,11 +780,11 @@ function startEditRoas() {
 
   function commit() {
     const nv = input.value.trim() || current;
-    data.roas = nv;
+    data.roas_avg = nv;
     saveState(state);
     const newEl = document.createElement('div');
     newEl.className = 'roas-main';
-    newEl.id = 'roas-main';
+    newEl.id = 'roas-avg';
     newEl.title = 'Clique para editar';
     newEl.textContent = nv;
     input.replaceWith(newEl);
@@ -731,7 +797,7 @@ function startEditRoas() {
     if (e.key === 'Escape') {
       const oldEl = document.createElement('div');
       oldEl.className = 'roas-main';
-      oldEl.id = 'roas-main';
+      oldEl.id = 'roas-avg';
       oldEl.title = 'Clique para editar';
       oldEl.textContent = current;
       input.replaceWith(oldEl);
@@ -746,7 +812,7 @@ function bindEdit(el) {
 
 function bindAllEdits() {
   document.querySelectorAll('.kpi-value[data-metric]').forEach(bindEdit);
-  document.getElementById('roas-main').addEventListener('click', startEditRoas);
+  document.getElementById('roas-avg').addEventListener('click', startEditRoas);
 }
 
 // PERIOD TABS
