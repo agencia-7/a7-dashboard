@@ -2,8 +2,18 @@ import urllib.request, json, re, os
 
 TOKEN    = os.environ['META_TOKEN']
 ACCOUNTS = ['619334585395511', '1000257484054841']
-KEYWORDS = ['Julian', 'Quintal', 'Piccolin', 'Ofir', 'Trilha', 'Watermann', 'Rei do']
 GV       = 'v21.0'
+
+# Clientes cujo ROAS é monitorado — altere apenas aqui quando houver adição/remoção
+CLIENTS = {
+    'EL CHAVO':   'El Chavo',
+    'JULIAN':     "Julian's Grill",
+    'QUINTAL':    'Quintal',
+    'PICCOLIN':   'Piccolinos',
+    'TOURO LOKO': 'Touro Loko',
+    'WATERMANN':  'Watermann',
+    'OFIR':       'Ofir',
+}
 
 def fmt_br(num, dec=0):
     if not num or num == 0:
@@ -42,8 +52,9 @@ def account_insights(ac, preset):
         clicks      = action_val(row.get('actions'), 'link_click'),
     )
 
-def calc_roas(preset):
-    ts, tr = 0.0, 0.0
+def calc_roas_stats(preset):
+    """Calcula ROAS por cliente e retorna máx, mín e média."""
+    totals = {k: {'spend': 0.0, 'revenue': 0.0} for k in CLIENTS}
     for ac in ACCOUNTS:
         url = (f'https://graph.facebook.com/{GV}/act_{ac}/insights'
                f'?level=campaign&fields=campaign_name,spend,action_values'
@@ -51,15 +62,25 @@ def calc_roas(preset):
         d = req(url)
         for row in (d.get('data') or []):
             name = (row.get('campaign_name') or '').upper()
-            if any(k.upper() in name for k in KEYWORDS):
-                ts += float(row.get('spend', 0))
-                tr += action_val(row.get('action_values'), 'omni_purchase')
-    return '—' if ts == 0 else fmt_br(tr / ts, 2)
+            for kw in CLIENTS:
+                if kw in name:
+                    totals[kw]['spend']   += float(row.get('spend', 0))
+                    totals[kw]['revenue'] += action_val(row.get('action_values'), 'omni_purchase')
+                    break  # evita dupla contagem
+    vals = [t['revenue'] / t['spend'] for t in totals.values() if t['spend'] > 0]
+    if not vals:
+        return {'max': '\u2014', 'min': '\u2014', 'avg': '\u2014'}
+    return {
+        'max': fmt_br(max(vals), 2),
+        'min': fmt_br(min(vals), 2),
+        'avg': fmt_br(sum(vals) / len(vals), 2),
+    }
 
 results = {}
 for key, preset in [('hoje','today'), ('7d','last_7d'), ('30d','last_30d')]:
     a1 = account_insights(ACCOUNTS[0], preset)
     a2 = account_insights(ACCOUNTS[1], preset)
+    roas = calc_roas_stats(preset)
     results[key] = dict(
         spend       = fmt_br(a1['spend']       + a2['spend'],       2),
         revenue     = fmt_br(a1['revenue']     + a2['revenue'],     2),
@@ -67,15 +88,17 @@ for key, preset in [('hoje','today'), ('7d','last_7d'), ('30d','last_30d')]:
         reach       = fmt_br(a1['reach']       + a2['reach'],       0),
         impressions = fmt_br(a1['impressions'] + a2['impressions'], 0),
         clicks      = fmt_br(a1['clicks']      + a2['clicks'],      0),
-        roas        = calc_roas(preset),
+        roas_max    = roas['max'],
+        roas_min    = roas['min'],
+        roas_avg    = roas['avg'],
     )
-    print(f"{key}: spend={results[key]['spend']}")
+    print(f"{key}: spend={results[key]['spend']} roas_avg={results[key]['roas_avg']}")
 
 h = results['hoje']; d7 = results['7d']; d30 = results['30d']
 new_defaults = f"""const DEFAULTS = {{
-  hoje: {{ spend: '{h['spend']}', revenue: '{h['revenue']}', sales: '{h['sales']}', reach: '{h['reach']}', impressions: '{h['impressions']}', clicks: '{h['clicks']}', roas: '{h['roas']}' }},
-  '7d': {{ spend: '{d7['spend']}', revenue: '{d7['revenue']}', sales: '{d7['sales']}', reach: '{d7['reach']}', impressions: '{d7['impressions']}', clicks: '{d7['clicks']}', roas: '{d7['roas']}' }},
-  '30d':{{ spend: '{d30['spend']}', revenue: '{d30['revenue']}', sales: '{d30['sales']}', reach: '{d30['reach']}', impressions: '{d30['impressions']}', clicks: '{d30['clicks']}', roas: '{d30['roas']}' }},
+  hoje: {{ spend: '{h["spend"]}', revenue: '{h["revenue"]}', sales: '{h["sales"]}', reach: '{h["reach"]}', impressions: '{h["impressions"]}', clicks: '{h["clicks"]}', roas_max: '{h["roas_max"]}', roas_min: '{h["roas_min"]}', roas_avg: '{h["roas_avg"]}' }},
+  '7d': {{ spend: '{d7["spend"]}', revenue: '{d7["revenue"]}', sales: '{d7["sales"]}', reach: '{d7["reach"]}', impressions: '{d7["impressions"]}', clicks: '{d7["clicks"]}', roas_max: '{d7["roas_max"]}', roas_min: '{d7["roas_min"]}', roas_avg: '{d7["roas_avg"]}' }},
+  '30d':{{ spend: '{d30["spend"]}', revenue: '{d30["revenue"]}', sales: '{d30["sales"]}', reach: '{d30["reach"]}', impressions: '{d30["impressions"]}', clicks: '{d30["clicks"]}', roas_max: '{d30["roas_max"]}', roas_min: '{d30["roas_min"]}', roas_avg: '{d30["roas_avg"]}' }},
 }};"""
 
 with open('index.html', 'r', encoding='utf-8') as f:
